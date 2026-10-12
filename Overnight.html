@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Animated Lyrics – Life After Just Friends</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F4EEF2;
+    --ink: #231F45;
+    --dim: #B4AECB;
+    --fill: #5B3FD9;
+    --panel: #FFFFFF;
+    --line: #DDD6E8;
+    --glow-a: #FFC9B8;
+    --glow-b: #D9C9FF;
+    --serif: "Instrument Serif", Georgia, "Times New Roman", serif;
+    --sans: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12112A;
+      --ink: #F3EAE4;
+      --dim: #4E4A78;
+      --fill: #FFD9A0;
+      --panel: #1B1940;
+      --line: #2E2B5C;
+      --glow-a: #F7B27A;
+      --glow-b: #6C4FD0;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12112A;
+    --ink: #F3EAE4;
+    --dim: #4E4A78;
+    --fill: #FFD9A0;
+    --panel: #1B1940;
+    --line: #2E2B5C;
+    --glow-a: #F7B27A;
+    --glow-b: #6C4FD0;
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Photo background: two layers that crossfade (fade out old, fade in new) */
+  .photos { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+  .ph {
+    position: absolute; inset: 0; background-size: cover; background-position: center;
+    opacity: 0; transition: opacity 1.8s ease-in-out;
+  }
+  .ph.on { opacity: 1; }
+  .photos::after { content: ""; position: absolute; inset: 0; background: var(--bg); opacity: .6; }
+
+  /* The horizon: fades from night to dawn as the song progresses */
+  .horizon {
+    position: fixed; left: 0; right: 0; bottom: 0; height: 75vh;
+    pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(90% 70% at 50% 108%, var(--glow-a) 0%, transparent 62%),
+      radial-gradient(130% 90% at 50% 120%, var(--glow-b) 0%, transparent 70%);
+    opacity: var(--dawn, .2);
+    transition: opacity .6s linear;
+  }
+
+  main { position: relative; z-index: 1; max-width: 880px; margin: 0 auto; padding: 20px 20px 40px; }
+
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+  .project { margin: 0; font-size: 14px; font-weight: 500; color: var(--dim); }
+  .meta { display: flex; flex-direction: column; gap: 2px; }
+  .meta input {
+    background: transparent; border: 0; color: var(--ink); font: inherit; padding: 2px 0; width: 100%;
+  }
+  #title { font-family: var(--serif); font-size: 26px; }
+  #artist { font-size: 14px; color: var(--dim); }
+  .meta input:focus-visible { outline: 2px solid var(--fill); outline-offset: 3px; border-radius: 4px; }
+
+  #stage {
+    position: relative; height: min(58vh, 520px); margin: 12px 0 8px; overflow: hidden;
+    -webkit-mask-image: linear-gradient(transparent 0, #000 22%, #000 78%, transparent 100%);
+            mask-image: linear-gradient(transparent 0, #000 22%, #000 78%, transparent 100%);
+  }
+  #lines { position: absolute; left: 0; right: 0; top: 0; transition: transform .7s cubic-bezier(.2,.8,.2,1); }
+  .line {
+    display: block; width: fit-content; max-width: 100%;
+    margin: 0 0 .5em; padding: 0 4px;
+    font-family: var(--serif); font-style: italic;
+    font-size: clamp(28px, 6.2vw, 52px); line-height: 1.15;
+    --p: 0%;
+    background: linear-gradient(90deg, var(--fill) var(--p), var(--dim) var(--p));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+    transform-origin: left center;
+    transition: transform .6s cubic-bezier(.2,.8,.2,1), opacity .6s, filter .6s;
+    opacity: .5; filter: blur(1.5px); transform: scale(.88);
+    cursor: pointer;
+  }
+  .line[data-s="past"] { --p: 100%; background: linear-gradient(90deg, var(--ink), var(--ink)); -webkit-background-clip: text; background-clip: text; opacity: .35; }
+  .line[data-s="active"] { opacity: 1; filter: none; transform: scale(1); }
+  .line[data-s="next"] { opacity: .7; filter: blur(.6px); transform: scale(.92); }
+  .line[data-sync="pending"]::after { content: ""; }
+
+  .empty { color: var(--dim); font-size: 16px; padding: 24px 0; }
+
+  .bar {
+    display: grid; grid-template-columns: auto auto 1fr auto; gap: 12px; align-items: center;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px;
+  }
+  .bar time { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--dim); min-width: 40px; }
+  button, .filebtn {
+    font: inherit; font-size: 14px; font-weight: 500; color: var(--ink);
+    background: transparent; border: 1px solid var(--line); border-radius: 999px;
+    padding: 8px 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  }
+  button:hover, .filebtn:hover { border-color: var(--fill); }
+  button:focus-visible, .filebtn:focus-within, input:focus-visible, textarea:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--fill); outline-offset: 2px;
+  }
+  #play { width: 44px; height: 44px; padding: 0; justify-content: center; border-radius: 50%; background: var(--fill); border-color: var(--fill); color: var(--bg); }
+  #play svg { width: 18px; height: 18px; fill: currentColor; }
+  input[type="range"] { width: 100%; accent-color: var(--fill); }
+  .filebtn input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+  .filebtn { position: relative; }
+
+  details { margin-top: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 4px 14px 14px; }
+  summary { cursor: pointer; padding: 10px 0; font-weight: 500; }
+  textarea {
+    width: 100%; min-height: 200px; resize: vertical; background: var(--bg); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 10px; padding: 12px; font: 15px/1.6 var(--sans);
+  }
+  .tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+  .tools label.speed { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--dim); }
+  .tools label.speed input { width: 110px; }
+  button[aria-pressed="true"] { background: var(--fill); color: var(--bg); border-color: var(--fill); }
+  .hint { font-size: 13px; line-height: 1.55; color: var(--dim); margin: 12px 0 0; }
+  #tap { display: none; width: 100%; margin-top: 12px; padding: 16px; justify-content: center; font-size: 16px; border-radius: 12px; }
+  body.sync #tap { display: inline-flex; }
+
+  @media (max-width: 560px) {
+    .bar { grid-template-columns: auto 1fr; }
+    .bar .t-cur, .bar .t-tot { display: none; }
+    #seek { grid-column: 1 / -1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #lines, .line, .horizon, .ph { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="photos" aria-hidden="true"><div class="ph"></div><div class="ph"></div></div>
+<div class="horizon" aria-hidden="true"></div>
+
+<main>
+  <header>
+    <div class="meta">
+      <input id="title" value="Kita Lewati Berdua" aria-label="Judul lagu">
+      <input id="artist" value="Overnight" aria-label="Nama artis">
+    </div>
+    <p class="project">Life After Just Friends</p>
+  </header>
+
+  <section id="stage" aria-live="polite"><div id="lines"></div></section>
+
+  <div class="bar">
+    <button id="play" aria-label="Putar"><svg viewBox="0 0 24 24" aria-hidden="true"><path id="playIcon" d="M8 5v14l11-7z"/></svg></button>
+    <time class="t-cur" id="cur">0:00</time>
+    <input id="seek" type="range" min="0" max="100" step="0.01" value="0" aria-label="Posisi lagu">
+    <time class="t-tot" id="tot">0:00</time>
+  </div>
+
+  <details open>
+    <summary>Lirik dan pengaturan</summary>
+    <textarea id="lyrics" spellcheck="false" aria-label="Lirik, satu baris per kalimat"></textarea>
+    <div class="tools">
+      <label class="filebtn">Pilih file lagu<input id="file" type="file" accept="audio/*"></label>
+      <label class="filebtn"><span id="photoLabel">Pilih foto latar</span><input id="photos" type="file" accept="image/*" multiple></label>
+      <label class="speed">Detik per foto <input id="phsec" type="range" min="3" max="20" step="1" value="8"><span id="phsecv">8</span></label>
+      <label class="speed">Detik per baris <input id="spl" type="range" min="2" max="8" step="0.5" value="4"><span id="splv">4</span></label>
+      <button id="syncBtn" aria-pressed="false">Mode sinkron</button>
+      <button id="copy">Salin lirik + waktu</button>
+      <button id="theme">Ganti tema</button>
+    </div>
+    <button id="tap">Ketuk saat baris ini dinyanyikan (atau tekan Spasi)</button>
+    <p class="hint">
+      Tempel liriknya sendiri, satu baris untuk satu kalimat. Tanpa waktu, baris berganti otomatis sesuai "detik per baris".
+      Untuk sinkron sempurna, pilih file lagu, nyalakan Mode sinkron, lalu ketuk tiap baris saat dinyanyikan.
+      Hasilnya berformat <code>[mm:ss.xx] lirik</code> dan bisa disalin untuk dipakai lagi.
+    </p>
+  </details>
+</main>
+
+<script>
+(function () {
+  const $ = (s) => document.querySelector(s);
+  const ta = $('#lyrics'), linesEl = $('#lines'), stage = $('#stage');
+  const seek = $('#seek'), cur = $('#cur'), tot = $('#tot');
+  const playBtn = $('#play'), playIcon = $('#playIcon');
+  const root = document.documentElement;
+  const PLAY = 'M8 5v14l11-7z', PAUSE = 'M6 5h4v14H6zM14 5h4v14h-4z';
+
+  const audio = new Audio();
+  let hasAudio = false;
+
+  let lines = [], els = [], times = [], total = 0;
+  let spl = 4, syncMode = false, nextStamp = 0, activeIdx = -2;
+  let playing = false, clockBase = 0, clockStart = 0;
+
+  // Placeholder text only: paste your own lyrics here.
+  ta.value = `
+    'Sepi menerpa'
+    'Selimuti kabut jiwa'
+    'Menjelma dirimu'
+    'Dalam untaian kata rindu'
+
+    'Semoga jarak yang terbentang ini'
+    'Segera mereda' 
+    'Merubah rindu yang meradang ini'
+    'Jadi kabar bahagia'
+
+    'Di kala hujan turun deras'
+    'Kala rindunya merasuk jiwa'
+    'Tenangkan dirimu, aku bersamamu'
+    'Walau tak kupeluk tubuhmu'
+
+    'Ataupun saat gelap tiba'
+    'Mungkin hanya lentera intuisimu' 
+    'Yang 'kan membawaku'
+    'Membasuh perih di hatimu'
+
+    'Jangan pergi dulu, oh, Sayang'
+    'Tetap bersamaku'
+    'Ku tahu semua takkan mudah (ku tahu semua takkan mudah)'
+    'Jalannya pun akan panjang (jalannya pun akan panjang)
+    'Namun, percayalah'
+    'Kita akan lewati berdua'
+
+    'Di kala hujan turun derass'
+    'Pekatnya badai mungkin terasa'
+    'Tenangkan dirimu, aku bersamamu'
+    'Walau tak kupeluk tubuhmu (peluk aku)'
+
+    'Ataupun saat gelap tiba'
+    'Mungkin hanya lentera intuisimu'
+    'Yang 'kan membawaku'
+    'Membasuh perih di hatimu'
+
+    `;
+
+  const fmt = (s) => {
+    s = Math.max(0, s);
+    const m = Math.floor(s / 60), r = s - m * 60;
+    return String(m).padStart(2, '0') + ':' + r.toFixed(2).padStart(5, '0');
+  };
+  const short = (s) => {
+    s = Math.max(0, Math.floor(s || 0));
+    return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  };
+
+  function parse() {
+    lines = ta.value.split('\n').map((r) => r.trim()).filter(Boolean).map((r) => {
+      const m = r.match(/^\[(\d+):(\d+(?:\.\d+)?)\]\s*(.*)$/);
+      return m ? { t: parseInt(m[1], 10) * 60 + parseFloat(m[2]), text: m[3] } : { t: null, text: r };
+    }).filter((l) => l.text);
+    build();
+  }
+
+  function build() {
+    linesEl.textContent = '';
+    els = lines.map((l, i) => {
+      const d = document.createElement('div');
+      d.className = 'line';
+      d.textContent = l.text;
+      d.addEventListener('click', () => { if (!syncMode && isFinite(times[i])) setTime(times[i]); });
+      linesEl.appendChild(d);
+      return d;
+    });
+    if (!lines.length) {
+      const p = document.createElement('p');
+      p.className = 'empty';
+      p.textContent = 'Belum ada lirik. Tempel liriknya di kolom bawah.';
+      linesEl.appendChild(p);
+    }
+    activeIdx = -2;
+    computeTimes();
+  }
+
+  function computeTimes() {
+    const stamped = lines.length > 0 && lines.every((l) => l.t !== null);
+    if (syncMode) times = lines.map((l) => (l.t !== null ? l.t : Infinity));
+    else times = lines.map((l, i) => (stamped ? l.t : i * spl));
+    const finite = times.filter(isFinite);
+    const est = finite.length ? finite[finite.length - 1] + (stamped ? 5 : spl) : 0;
+    total = hasAudio && isFinite(audio.duration) ? audio.duration : est;
+    seek.max = total || 1;
+    tot.textContent = short(total);
+  }
+
+  const now = () => hasAudio ? audio.currentTime
+    : playing ? clockBase + (performance.now() - clockStart) / 1000 : clockBase;
+
+  function setTime(t) {
+    t = Math.min(Math.max(0, t), total || 0);
+    if (hasAudio) audio.currentTime = t;
+    else { clockBase = t; clockStart = performance.now(); }
+  }
+
+  function setPlaying(p) {
+    playing = p;
+    playIcon.setAttribute('d', p ? PAUSE : PLAY);
+    playBtn.setAttribute('aria-label', p ? 'Jeda' : 'Putar');
+  }
+
+  function play() {
+    if (hasAudio) { audio.play(); return; }
+    if (!total) return;
+    if (clockBase >= total) clockBase = 0;
+    clockStart = performance.now();
+    setPlaying(true);
+  }
+  function pause() {
+    if (hasAudio) { audio.pause(); return; }
+    clockBase = now();
+    setPlaying(false);
+  }
+  const toggle = () => (playing ? pause() : play());
+
+  audio.addEventListener('play', () => setPlaying(true));
+  audio.addEventListener('pause', () => setPlaying(false));
+  audio.addEventListener('ended', () => setPlaying(false));
+  audio.addEventListener('loadedmetadata', computeTimes);
+
+  function render(t) {
+    let idx = -1;
+    for (let i = 0; i < times.length; i++) if (times[i] <= t) idx = i;
+
+    if (idx !== activeIdx) {
+      activeIdx = idx;
+      els.forEach((el, i) => {
+        el.dataset.s = i < idx ? 'past' : i === idx ? 'active' : i === idx + 1 ? 'next' : 'later';
+        if (i !== idx) el.style.removeProperty('--p');
+      });
+      const target = els[Math.max(idx, 0)];
+      if (target) {
+        const y = target.offsetTop + target.offsetHeight / 2 - stage.clientHeight / 2;
+        linesEl.style.transform = 'translateY(' + (-Math.max(0, y)) + 'px)';
+      }
+    }
+    if (idx >= 0) {
+      const start = times[idx];
+      let end = times[idx + 1];
+      if (!isFinite(end)) end = start + spl;
+      const p = Math.min(1, Math.max(0, (t - start) / Math.max(0.2, end - start)));
+      els[idx].style.setProperty('--p', (p * 100).toFixed(1) + '%');
+    }
+  }
+
+  function tick() {
+    let t = now();
+    if (!hasAudio && playing && total && t >= total) { clockBase = total; setPlaying(false); t = total; }
+    render(t);
+    if (photos.length) {
+      const pi = Math.floor(t / phSec) % photos.length;
+      if (pi !== phIdx) showPhoto(pi);
+    }
+    if (document.activeElement !== seek) seek.value = t;
+    cur.textContent = short(t);
+    const prog = total ? Math.min(1, t / total) : 0;
+    root.style.setProperty('--dawn', (0.2 + 0.8 * prog).toFixed(3));
+    requestAnimationFrame(tick);
+  }
+
+  // --- sync mode ---
+  function writeBack() {
+    ta.value = lines.map((l) => (l.t !== null ? '[' + fmt(l.t) + '] ' : '') + l.text).join('\n');
+  }
+  function stamp() {
+    if (!syncMode || nextStamp >= lines.length) return;
+    lines[nextStamp].t = Math.round(now() * 100) / 100;
+    nextStamp++;
+    writeBack();
+    computeTimes();
+    updateTapLabel();
+  }
+  function updateTapLabel() {
+    const tap = $('#tap');
+    tap.textContent = nextStamp < lines.length
+      ? 'Ketuk sekarang: ' + lines[nextStamp].text
+      : 'Semua baris sudah ditandai. Matikan Mode sinkron.';
+  }
+  $('#syncBtn').addEventListener('click', (e) => {
+    syncMode = !syncMode;
+    e.currentTarget.setAttribute('aria-pressed', String(syncMode));
+    document.body.classList.toggle('sync', syncMode);
+    if (syncMode) {
+      lines.forEach((l) => { l.t = null; });
+      nextStamp = 0;
+      writeBack();
+      setTime(0);
+      updateTapLabel();
+    }
+    computeTimes();
+    activeIdx = -2;
+  });
+  $('#tap').addEventListener('click', stamp);
+
+  // --- wiring ---
+  playBtn.addEventListener('click', toggle);
+  seek.addEventListener('input', () => setTime(parseFloat(seek.value)));
+  ta.addEventListener('input', () => { if (!syncMode) parse(); });
+  $('#spl').addEventListener('input', (e) => {
+    spl = parseFloat(e.target.value);
+    $('#splv').textContent = spl;
+    computeTimes();
+  });
+  $('#file').addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    if (audio.src) URL.revokeObjectURL(audio.src);
+    audio.src = URL.createObjectURL(f);
+    hasAudio = true;
+    setPlaying(false);
+    computeTimes();
+  });
+  // --- photo background (crossfade) ---
+  const phEls = document.querySelectorAll('.ph');
+  let photos = [], phTop = 0, phIdx = -1, phSec = 8;
+  function showPhoto(i) {
+    phIdx = i;
+    const incoming = phEls[1 - phTop], outgoing = phEls[phTop];
+    incoming.style.backgroundImage = 'url("' + photos[i] + '")';
+    incoming.classList.add('on');   // fade in
+    outgoing.classList.remove('on'); // fade out
+    phTop = 1 - phTop;
+  }
+  $('#photos').addEventListener('change', (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    photos.forEach((u) => URL.revokeObjectURL(u));
+    photos = files.map((f) => URL.createObjectURL(f));
+    phIdx = -1;
+    $('#photoLabel').textContent = photos.length + ' foto dipilih';
+  });
+  $('#phsec').addEventListener('input', (e) => {
+    phSec = parseInt(e.target.value, 10);
+    $('#phsecv').textContent = phSec;
+  });
+
+  $('#copy').addEventListener('click', async (e) => {
+    const b = e.currentTarget, old = b.textContent;
+    try { await navigator.clipboard.writeText(ta.value); b.textContent = 'Tersalin'; }
+    catch (err) { ta.select(); b.textContent = 'Pilih lalu salin manual'; }
+    setTimeout(() => { b.textContent = old; }, 1600);
+  });
+  $('#theme').addEventListener('click', () => {
+    const dark = root.dataset.theme
+      ? root.dataset.theme === 'dark'
+      : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.code !== 'Space') return;
+    const tag = (document.activeElement && document.activeElement.tagName) || '';
+    if (/INPUT|TEXTAREA|BUTTON|SUMMARY/.test(tag)) return;
+    e.preventDefault();
+    if (syncMode) stamp(); else toggle();
+  });
+  window.addEventListener('resize', () => { activeIdx = -2; });
+
+  parse();
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
