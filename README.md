@@ -1,4 +1,4 @@
-# 🌅 Life After Just Friends — Animated Lyrics
+# 🌅 Life After Just Friends — OverNight "Kita Lewati Berdua" Lyrics
 
 Tool pemutar lirik beranimasi (karaoke style) berbasis web, dibuat dengan **HTML, CSS, dan JavaScript** murni. Tanpa framework, tanpa instalasi, cukup buka di browser.
 
